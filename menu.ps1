@@ -20,6 +20,7 @@ function Select-InteractiveItem {
         [Parameter(Mandatory)][string]    $Title,
         [Parameter(Mandatory)][System.Collections.IDictionary] $Items,
         [string] $Footer,
+        [scriptblock] $Preview,
         $KeyList  # <-- Remove [string[]] to allow mixed types (int and string)
     )
 
@@ -44,6 +45,11 @@ function Select-InteractiveItem {
             } else {
                 Write-Host "   $displayValue"
             }
+        }
+
+        if ($Preview) {
+            Write-Host ""
+            & $Preview $KeyList[$index]
         }
 
         Write-Host ""
@@ -72,6 +78,86 @@ function Get-StatusFooter {
     } catch { $wslCount = 0 }
     try { $os = Get-CimInstance Win32_OperatingSystem; $win="$($os.Caption) ($($os.BuildNumber))" } catch { $win="Unknown" }
     return "WSL instances: $wslCount | $win"
+}
+
+function Get-WindowsTerminalSettingsPath {
+    $terminalSettingsPaths = @(
+        "$env:LOCALAPPDATA\Microsoft\Windows Terminal\settings.json",
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+    )
+    return $terminalSettingsPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+
+function Get-NearestConsoleColor {
+    param([string]$HexColor)
+
+    if ($HexColor -notmatch '^#?([0-9A-Fa-f]{6})$') { return [ConsoleColor]::Gray }
+
+    $hex = $Matches[1]
+    $red = [Convert]::ToInt32($hex.Substring(0, 2), 16)
+    $green = [Convert]::ToInt32($hex.Substring(2, 2), 16)
+    $blue = [Convert]::ToInt32($hex.Substring(4, 2), 16)
+    $palette = @(
+        @{ Name='Black'; R=0; G=0; B=0 }, @{ Name='DarkBlue'; R=0; G=0; B=128 },
+        @{ Name='DarkGreen'; R=0; G=128; B=0 }, @{ Name='DarkCyan'; R=0; G=128; B=128 },
+        @{ Name='DarkRed'; R=128; G=0; B=0 }, @{ Name='DarkMagenta'; R=128; G=0; B=128 },
+        @{ Name='DarkYellow'; R=128; G=128; B=0 }, @{ Name='Gray'; R=192; G=192; B=192 },
+        @{ Name='DarkGray'; R=128; G=128; B=128 }, @{ Name='Blue'; R=0; G=0; B=255 },
+        @{ Name='Green'; R=0; G=255; B=0 }, @{ Name='Cyan'; R=0; G=255; B=255 },
+        @{ Name='Red'; R=255; G=0; B=0 }, @{ Name='Magenta'; R=255; G=0; B=255 },
+        @{ Name='Yellow'; R=255; G=255; B=0 }, @{ Name='White'; R=255; G=255; B=255 }
+    )
+
+    $nearest = 'Gray'
+    $nearestDistance = [double]::PositiveInfinity
+    foreach ($color in $palette) {
+        $distance = [Math]::Pow(($red - $color.R), 2) +
+                    [Math]::Pow(($green - $color.G), 2) +
+                    [Math]::Pow(($blue - $color.B), 2)
+        if ($distance -lt $nearestDistance) {
+            $nearestDistance = $distance
+            $nearest = $color.Name
+        }
+    }
+    return [ConsoleColor]::$nearest
+}
+
+function Get-TerminalFontChoices {
+    $installedFonts = @()
+    $fontRegistryPaths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
+        'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    )
+    foreach ($registryPath in $fontRegistryPaths) {
+        if (Test-Path $registryPath) {
+            $fontProperties = Get-ItemProperty $registryPath
+            $installedFonts += $fontProperties.PSObject.Properties |
+                Where-Object { $_.Name -notlike 'PS*' } |
+                ForEach-Object { $_.Name -replace '\s+\((TrueType|OpenType)\)$', '' }
+        }
+    }
+
+    $fontNames = @(
+        'Cascadia Code',
+        'Cascadia Mono',
+        'Consolas',
+        'Courier New',
+        'Hack Nerd Font',
+        'Hack Nerd Font Mono',
+        'Hack Nerd Font Propo'
+    )
+    $fontNames += $installedFonts | Where-Object { $_ -match '(?i)Mono|Code|Consolas|Hack|Courier' }
+    $fontNames = @($fontNames | Sort-Object -Unique)
+
+    $choices = [ordered]@{}
+    foreach ($fontName in $fontNames) {
+        $isInstalled = $installedFonts | Where-Object {
+            $_ -eq $fontName -or $_ -match ("(?i)^" + [regex]::Escape($fontName) + '\s')
+        } | Select-Object -First 1
+        $label = if ($isInstalled) { $fontName } else { "$fontName (not detected as installed)" }
+        $choices[$fontName] = $label
+    }
+    return $choices
 }
 
 # =========================
@@ -218,9 +304,62 @@ function Menu-refreshTerminal {
     $instance = Select-InteractiveItem -Title "Refresh Terminal Profile for WSL Instance" -Items $items -Footer (Get-StatusFooter)
     if ($null -eq $instance) { return }
 
-    $defaultTheme = 'One Half Dark'
-    $userTheme = Read-Host "Choose a terminal theme [$defaultTheme]"
-    $themeToUse = if ([string]::IsNullOrWhiteSpace($userTheme)) { $defaultTheme } else { $userTheme }
+    $settingsPath = Get-WindowsTerminalSettingsPath
+    $schemes = @{}
+    if ($settingsPath) {
+        try {
+            $settingsContent = Get-Content $settingsPath -Raw
+            $settingsContent = $settingsContent -replace '(?m)^\s*//.*$', ''
+            $settingsContent = $settingsContent -replace '(?s)/\*.*?\*/', ''
+            $settingsContent = $settingsContent -replace ',(\s*[}\]])', '$1'
+            $terminalSettings = $settingsContent | ConvertFrom-Json
+            foreach ($scheme in $terminalSettings.schemes) {
+                if ($scheme.name) { $schemes[$scheme.name] = $scheme }
+            }
+        }
+        catch {
+            Write-Warning "Could not read Windows Terminal color schemes: $_"
+        }
+    }
+
+    $builtInThemes = @(
+        'Campbell',
+        'Campbell Powershell',
+        'One Half Dark',
+        'One Half Light',
+        'Solarized Dark',
+        'Solarized Light',
+        'Tango Dark',
+        'Tango Light',
+        'Vintage'
+    )
+    $themeNames = @($builtInThemes + $schemes.Keys | Sort-Object -Unique)
+    $themeItems = [ordered]@{}
+    foreach ($themeName in $themeNames) { $themeItems[$themeName] = $themeName }
+
+    $themePreview = {
+        param($selectedTheme)
+        if ($schemes.ContainsKey($selectedTheme)) {
+            $scheme = $schemes[$selectedTheme]
+            $background = Get-NearestConsoleColor $scheme.background
+            $foreground = Get-NearestConsoleColor $scheme.foreground
+            Write-Host " Theme sample: WSL prompt  user@host:~$ " -ForegroundColor $foreground -BackgroundColor $background
+            foreach ($colorKey in @('black', 'red', 'green', 'yellow', 'blue', 'purple', 'cyan', 'white')) {
+                $color = Get-NearestConsoleColor $scheme.$colorKey
+                Write-Host '   ' -NoNewline -BackgroundColor $color
+            }
+            Write-Host ""
+        }
+        else {
+            Write-Host " No configured color preview is available for this theme." -ForegroundColor DarkGray
+        }
+    }
+    $themeToUse = Select-InteractiveItem -Title "Choose a terminal theme" -Items $themeItems -Footer "Color swatches approximate the Windows Terminal palette." -Preview $themePreview
+    if ($null -eq $themeToUse) { return }
+
+    $fontItems = Get-TerminalFontChoices
+    $fontToUse = Select-InteractiveItem -Title "Choose a terminal font" -Items $fontItems -Footer "Hack Nerd Font, Hack Nerd Font Mono, and Hack Nerd Font Propo are always listed."
+    if ($null -eq $fontToUse) { return }
 
 
     $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -234,7 +373,7 @@ function Menu-refreshTerminal {
     }
 
     try {
-        & $terminalScriptPath -profileName $instance -colorScheme $themeToUse -ErrorAction Stop
+        & $terminalScriptPath -profileName $instance -colorScheme $themeToUse -fontFace $fontToUse -ErrorAction Stop
         Write-Host "Terminal profile refreshed successfully"
     }
     catch {
