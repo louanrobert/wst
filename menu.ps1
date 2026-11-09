@@ -122,6 +122,41 @@ function Get-NearestConsoleColor {
     return [ConsoleColor]::$nearest
 }
 
+function Get-BuiltInTerminalSchemes {
+    return @{
+        'Campbell' = @{
+            background='#0C0C0C'; foreground='#CCCCCC'; black='#0C0C0C'; red='#C50F1F'; green='#13A10E'; yellow='#C19C00'; blue='#0037DA'; purple='#881798'; cyan='#3A96DD'; white='#CCCCCC'
+        }
+        'Campbell Powershell' = @{
+            background='#012456'; foreground='#EEEDF0'; black='#0C0C0C'; red='#C50F1F'; green='#13A10E'; yellow='#C19C00'; blue='#0037DA'; purple='#881798'; cyan='#3A96DD'; white='#CCCCCC'
+        }
+        'Dark+' = @{
+            background='#1E1E1E'; foreground='#D4D4D4'; black='#000000'; red='#CD3131'; green='#0DBC79'; yellow='#E5E510'; blue='#2472C8'; purple='#BC3FBC'; cyan='#11A8CD'; white='#E5E5E5'
+        }
+        'One Half Dark' = @{
+            background='#282C34'; foreground='#DCDFE4'; black='#282C34'; red='#E06C75'; green='#98C379'; yellow='#E5C07B'; blue='#61AFEF'; purple='#C678DD'; cyan='#56B6C2'; white='#DCDFE4'
+        }
+        'One Half Light' = @{
+            background='#FAFAFA'; foreground='#383A42'; black='#383A42'; red='#E45649'; green='#50A14F'; yellow='#C18401'; blue='#0184BC'; purple='#A626A4'; cyan='#0997B3'; white='#FAFAFA'
+        }
+        'Solarized Dark' = @{
+            background='#002B36'; foreground='#839496'; black='#073642'; red='#DC322F'; green='#859900'; yellow='#B58900'; blue='#268BD2'; purple='#D33682'; cyan='#2AA198'; white='#EEE8D5'
+        }
+        'Solarized Light' = @{
+            background='#FDF6E3'; foreground='#657B83'; black='#073642'; red='#DC322F'; green='#859900'; yellow='#B58900'; blue='#268BD2'; purple='#D33682'; cyan='#2AA198'; white='#FDF6E3'
+        }
+        'Tango Dark' = @{
+            background='#000000'; foreground='#D3D7CF'; black='#000000'; red='#CC0000'; green='#4E9A06'; yellow='#C4A000'; blue='#3465A4'; purple='#75507B'; cyan='#06989A'; white='#D3D7CF'
+        }
+        'Tango Light' = @{
+            background='#FFFFFF'; foreground='#555753'; black='#000000'; red='#CC0000'; green='#4E9A06'; yellow='#C4A000'; blue='#3465A4'; purple='#75507B'; cyan='#06989A'; white='#D3D7CF'
+        }
+        'Vintage' = @{
+            background='#000000'; foreground='#00BB00'; black='#000000'; red='#BB0000'; green='#00BB00'; yellow='#BBBB00'; blue='#0000BB'; purple='#BB00BB'; cyan='#00BBBB'; white='#BBBBBB'
+        }
+    }
+}
+
 function Get-TerminalFontChoices {
     $installedFonts = @()
     $fontRegistryPaths = @(
@@ -322,25 +357,16 @@ function Menu-refreshTerminal {
         }
     }
 
-    $builtInThemes = @(
-        'Campbell',
-        'Campbell Powershell',
-        'One Half Dark',
-        'One Half Light',
-        'Solarized Dark',
-        'Solarized Light',
-        'Tango Dark',
-        'Tango Light',
-        'Vintage'
-    )
-    $themeNames = @($builtInThemes + $schemes.Keys | Sort-Object -Unique)
+    $previewSchemes = Get-BuiltInTerminalSchemes
+    foreach ($schemeName in $schemes.Keys) { $previewSchemes[$schemeName] = $schemes[$schemeName] }
+    $themeNames = @($previewSchemes.Keys | Sort-Object)
     $themeItems = [ordered]@{}
     foreach ($themeName in $themeNames) { $themeItems[$themeName] = $themeName }
 
     $themePreview = {
         param($selectedTheme)
-        if ($schemes.ContainsKey($selectedTheme)) {
-            $scheme = $schemes[$selectedTheme]
+        if ($previewSchemes.ContainsKey($selectedTheme)) {
+            $scheme = $previewSchemes[$selectedTheme]
             $background = Get-NearestConsoleColor $scheme.background
             $foreground = Get-NearestConsoleColor $scheme.foreground
             Write-Host " Theme sample: WSL prompt  user@host:~$ " -ForegroundColor $foreground -BackgroundColor $background

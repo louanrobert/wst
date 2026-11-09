@@ -30,6 +30,54 @@ Write-Host "Backup created: $backupPath"
 # Load settings
 $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
 
+# Windows Terminal can create renamed copies when a custom scheme is duplicated. Keep one
+# canonical entry and repair profile references to any generated "modified" names.
+$darkPlusPattern = '^Dark\+(?: \(modified(?: \d+)?\))?$'
+$darkPlusEntries = @($settings.schemes | Where-Object { $_.name -match $darkPlusPattern })
+if ($darkPlusEntries.Count -gt 0) {
+    $darkPlusScheme = $darkPlusEntries | Where-Object { $_.name -eq 'Dark+' } | Select-Object -First 1
+    if (-not $darkPlusScheme) { $darkPlusScheme = $darkPlusEntries[0] }
+    $darkPlusScheme.name = 'Dark+'
+    $settings.schemes = @($settings.schemes | Where-Object { $_.name -notmatch $darkPlusPattern }) + $darkPlusScheme
+
+    if ($settings.profiles -and $settings.profiles.list) {
+        foreach ($profile in $settings.profiles.list) {
+            if ($profile.colorScheme -match $darkPlusPattern) {
+                $profile.colorScheme = 'Dark+'
+            }
+        }
+    }
+}
+elseif ($colorScheme -eq 'Dark+') {
+    $darkPlusScheme = @{
+        name = 'Dark+'
+        background = '#1E1E1E'
+        foreground = '#D4D4D4'
+        cursorColor = '#FFFFFF'
+        selectionBackground = '#264F78'
+        black = '#000000'
+        red = '#CD3131'
+        green = '#0DBC79'
+        yellow = '#E5E510'
+        blue = '#2472C8'
+        purple = '#BC3FBC'
+        cyan = '#11A8CD'
+        white = '#E5E5E5'
+        brightBlack = '#666666'
+        brightRed = '#F14C4C'
+        brightGreen = '#23D18B'
+        brightYellow = '#F5F543'
+        brightBlue = '#3B8EEA'
+        brightPurple = '#D670D6'
+        brightCyan = '#29B8DB'
+        brightWhite = '#E5E5E5'
+    }
+    if ($null -eq $settings.schemes) {
+        $settings | Add-Member -MemberType NoteProperty -Name schemes -Value @()
+    }
+    $settings.schemes = @($settings.schemes) + $darkPlusScheme
+}
+
 # Make sure list exists
 if (-not $settings.profiles.list) { $settings.profiles.list = @() }
 
