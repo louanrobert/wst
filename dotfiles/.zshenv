@@ -1,11 +1,20 @@
-# Oh my Zsh configuration
-export ZSH="$HOME/.oh-my-zsh"
+export ZSH_CONFIG="${ZSH_CONFIG:-$HOME/.zsh-config}"
 
-# Include Arkade in $PATH
-export PATH="$PATH:$HOME/.arkade/bin"
+# Preserve the original PATH precedence, including in nested shells.
+typeset -U path PATH
+path=(
+  "$HOME/.arkade/bin"
+  "$HOME/.local/share/gem/ruby/3.3.0/bin"
+  "$HOME/bin"
+  /usr/local/bin
+  $path
+  /usr/local/go/bin
+  "$HOME/.local/bin"
+  "${KREW_ROOT:-$HOME/.krew}/bin"
+)
 
-# Include custom scripts in $PATH
-export PATH="$PATH:$HOME/.local/bin"
+# zsh-autocomplete owns completion initialization, including on Ubuntu.
+skip_global_compinit=1
 
 # Go
 export GOPATH="$HOME/.local"
@@ -17,6 +26,3 @@ export CARGO_HOME="$HOME/.local"
 export EDITOR=nvim
 export VISUAL=nvim
 export MANPAGER='nvim +Man!'
-
-# Krew
-export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"

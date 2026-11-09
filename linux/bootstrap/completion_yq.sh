@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 # Adds command completion for yq.
-ZSH="$HOME/.oh-my-zsh"
-mkdir -p $ZSH/completions
-if [[ -s "$ZSH/completions/_yq" ]]; then
+set -euo pipefail
+ZSH="${XDG_DATA_HOME:-$HOME/.local/share}/zsh"
+mkdir -p "$ZSH/site-functions"
+if [[ -s "$ZSH/site-functions/_yq" ]]; then
     printf "\e[1;32mOK\e[m: yq completion already exists.\n" >/dev/null 2>&1
 else
-    yq shell-completion zsh > "$ZSH/completions/_yq"
+    yq shell-completion zsh > "$ZSH/site-functions/_yq"
     printf "\e[1;33mCHANGED\e[m: Generated command completion file _yq.\n"
 fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-ZSH="$HOME/.oh-my-zsh"
+ZSH="${XDG_DATA_HOME:-$HOME/.local/share}/zsh"
 if command -v just >/dev/null 2>&1; then
     printf "\e[1;32mOK\e[m: just \e[1;32mis already installed.\n"
 else
@@ -12,10 +12,10 @@ else
 fi
 
 # Generate just completions
-mkdir -p $ZSH/completions
-if [[ -s "$ZSH/completions/_just" ]]; then
+mkdir -p "$ZSH/site-functions"
+if [[ -s "$ZSH/site-functions/_just" ]]; then
     printf "\e[1;32mOK\e[m: just completion already exists.\n" >/dev/null 2>&1
 else
     printf "\e[1;33mCHANGED\e[m: Generating command completion file _just...\n"
-    just --completions zsh > "$ZSH/completions/_just"
+    just --completions zsh > "$ZSH/site-functions/_just"
 fi

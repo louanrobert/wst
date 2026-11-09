@@ -15,9 +15,17 @@ updates_system:
     @bash ./bootstrap/update_system.sh
 
 # Installing and configuring zsh
-install_zsh:
+install_zsh: install_colorls
     @bash ./bootstrap/add_zsh.sh
     @bash ./bootstrap/add_zsh_plugins.sh
+
+# Install the Ruby-backed colorls command before its Zsh aliases are loaded.
+install_colorls:
+    @bash ./bootstrap/install_colorls.sh
+
+# Update Znap and its managed plugins explicitly, never at shell startup.
+update_zsh:
+    @zsh -dfi -c 'source "$HOME/.zshenv" && source "$HOME/.zshrc" && znap pull'
 
 # Installing tmux terminal multiplexer
 install_tmux:
@@ -68,6 +76,7 @@ install_tools:
 # A master function that runs the above functions in sequence to setup the system.
 all:
     #!/usr/bin/env bash
+    set -euo pipefail
     printf "\n\e[1;33m========>            Starting system setup             <========\e[m\n"
     printf "\n\e[1;90m---->                 Verify prerequisites                 <----\e[m\n"
     just install_prerequisites

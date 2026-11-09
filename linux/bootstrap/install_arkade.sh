@@ -38,11 +38,10 @@ ARKADE_VERSION=$(arkade version | awk '/Version:/ { print $2 }')
 printf "\e[1;34mINFO\e[m: arkade version %s present.\n" "$ARKADE_VERSION"
 
 # Append ~/.arkade/bin to shell config if not already present
-if ! grep -qF 'export PATH=$PATH:$HOME/.arkade/bin' "$HOME/.zshenv" >/dev/null 2>&1; then
+if ! grep -qF '$HOME/.arkade/bin' "$HOME/.zshenv" >/dev/null 2>&1; then
     echo 'export PATH=$PATH:$HOME/.arkade/bin' >> "$HOME/.zshenv"
     printf "\e[1;33mCHANGED\e[m: Added ~/.arkade/bin to PATH in .zshenv\n"
 fi
 
 # Immediate session export
 export PATH="$PATH:$HOME/.arkade/bin"
-

@@ -73,7 +73,15 @@ Write-Host "Copying workstation scripts into the WSL instance..."
 Copy-Item -Path (Join-Path $workspaceRoot 'linux\*') -Destination $destPath -Recurse -Force
 
 Write-Host "Copying dotfiles into the WSL instance..."
-Copy-Item -Path (Join-Path $workspaceRoot 'dotfiles\*') -Destination $destHome -Recurse -Force
+$sourceDotfiles = Join-Path $workspaceRoot 'dotfiles'
+$stagedDotfiles = Join-Path $destHome 'dotfiles'
+New-Item -ItemType Directory -Path $stagedDotfiles -Force | Out-Null
+Get-ChildItem -LiteralPath $sourceDotfiles -Force |
+    Copy-Item -Destination $stagedDotfiles -Recurse -Force
+# Shell files are installed and backed up by add_zsh.sh, not overwritten here.
+Get-ChildItem -LiteralPath $sourceDotfiles -Force |
+    Where-Object { $_.Name -notin @('.zshrc', '.zshenv', '.aliases') } |
+    Copy-Item -Destination $destHome -Recurse -Force
 
 # Set ownership and mark scripts executable (use explicit chmod +x and retry if necessary)
 Write-Host "Setting ownership and permissions inside the instance..."

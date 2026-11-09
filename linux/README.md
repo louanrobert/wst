@@ -30,12 +30,22 @@ I don't want to challenge all the stack but good to be in mind few technical cho
     - init.lua only for neovim
     - why not AstroVIM ?
 * *ZSH* - Why ? 
-    - Why `ZSH_THEME="robbyrussell"` ?
-    - Why `Oh-my-zsh` and not ZIM ? 
+    - Znap manages Oh My Zsh libraries/plugins and the existing Bira theme.
+    - `just install_zsh` backs up and installs shell dotfiles; `just update_zsh`
+      updates plugins explicitly.
 * *Podman* - Why not *docker* ?
 * *uv* - Why not *pyenv* ?
 
 ## Some guidlines
+
+Shell configuration regression checks run with `bash tests/zsh.sh` from
+`linux/` (requires Bash and Zsh). They use a temporary home and mocked privileged
+commands; they do not install packages or change your real dotfiles.
+
+`python3 tests/cd-menu.py` exercises the actual directory menu in an isolated
+pseudo-terminal, including arrow navigation and prefix filtering. This optional
+integration check requires Git, Zsh, Python 3, and network access to download the
+configured plugins into a temporary home; it does not change your real dotfiles.
 
 * Ideally, the `just` should run on any Linux distro... but if works on *debian-like*, it's already great.
 

@@ -1,24 +1,24 @@
 # working with files
-alias l='ls -Flh'
-alias ll='ls -Flha'
+(( $+aliases[l] )) || alias l='ls -Flh'
+(( $+aliases[ll] )) || alias ll='ls -Flha'
 alias path='echo -e ${PATH//:/\\n}'         # Echo all executable Paths
 
 
 # git
-alias g='git'
-alias gs='git status --short'
-alias gS='git status'
-alias gd='git diff'
-alias gD='git diff --staged'
-alias ga='git add'
-alias gA='git add --update'
-alias gc='git commit'
-alias gco='git checkout'
-alias gcob='git checkout -b'
-alias gcom='git checkout master'
-alias gp='git push'
-alias gl='git log --decorate --oneline --graph'
-alias gL='git log -p --shortstat'
+(( $+aliases[g] )) || alias g='git'
+(( $+aliases[gs] )) || alias gs='git status --short'
+(( $+aliases[gS] )) || alias gS='git status'
+(( $+aliases[gd] )) || alias gd='git diff'
+(( $+aliases[gD] )) || alias gD='git diff --staged'
+(( $+aliases[ga] )) || alias ga='git add'
+(( $+aliases[gA] )) || alias gA='git add --update'
+(( $+aliases[gc] )) || alias gc='git commit'
+(( $+aliases[gco] )) || alias gco='git checkout'
+(( $+aliases[gcob] )) || alias gcob='git checkout -b'
+(( $+aliases[gcom] )) || alias gcom='git checkout master'
+(( $+aliases[gp] )) || alias gp='git push'
+(( $+aliases[gl] )) || alias gl='git log --decorate --oneline --graph'
+(( $+aliases[gL] )) || alias gL='git log -p --shortstat'
 
 # tmux
 alias t='tmux'
@@ -36,7 +36,9 @@ if [ -x "$(command -v nvim)" ]; then
 fi
 
 # fzf with bat preview
-alias bat='batcat --color=always'
+if command -v batcat >/dev/null 2>&1; then
+  alias bat='batcat --color=always'
+fi
 alias inv='nvim $(fzf -m --preview="bat --color=always {}")'
 alias xat='fzf --preview="bat --color=always --style=numbers --line-range=:500 {}"'
 

@@ -1,31 +1,50 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# Installs and sets zsh as default shell and installs oh-my-zsh if needed.
 if command -v zsh >/dev/null 2>&1; then
-    omz update >/dev/null 2>&1
-    printf "\e[1;32mOK\e[m: zsh \e[1;32mis already installed and udpated.\n"
+    printf "\e[1;32mOK\e[m: zsh is already installed.\n"
 else
     sudo apt install -y zsh
-    printf "\e[1;33mCHANGED\e[m: zsh is not found. Installing...\n"
+    printf "\e[1;33mCHANGED\e[m: Installed zsh.\n"
 fi
-if [[ "$SHELL" = "/usr/bin/zsh" ]]; then
-    printf "\e[1;32mOK\e[m: zsh \e[1;32mis already the default shell.\n"
+
+zsh_path="$(command -v zsh)"
+current_shell="$(getent passwd "$(id -un)" | cut -d: -f7)"
+if [[ "$current_shell" == "$zsh_path" ]]; then
+    printf "\e[1;32mOK\e[m: zsh is already the default shell.\n"
 else
-    sudo chsh -s "$(command -v zsh)" $USER
-    printf "\e[1;33mCHANGED\e[m: zsh set as the default shell.\n"
+    sudo chsh -s "$zsh_path" "$(id -un)"
+    printf "\e[1;33mCHANGED\e[m: Set zsh as the default shell.\n"
 fi
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    git clone https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
-    printf "\e[1;33mCHANGED\e[m: Oh-My-Zsh installed to $HOME/.oh-my-zsh\n"
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+dotfiles="$script_dir/../../dotfiles"
+if [[ ! -d "$dotfiles" ]]; then
+    printf "\e[1;31mERROR\e[m: Dotfiles not found at %s. Keep dotfiles beside linux/ or workstation/.\n" "$dotfiles" >&2
+    exit 1
+fi
+
+for name in .zshenv .zshrc .aliases; do
+    source_file="$dotfiles/$name"
+    target="$HOME/$name"
+    if cmp -s -- "$source_file" "$target"; then
+        printf "\e[1;32mOK\e[m: %s is already installed.\n" "$name"
+        continue
+    fi
+    if [[ -e "$target" || -L "$target" ]]; then
+        backup="$(mktemp "$target.backup.XXXXXXXX")"
+        cp -p -- "$target" "$backup"
+        printf "\e[1;33mCHANGED\e[m: Backed up %s to %s.\n" "$target" "$backup"
+    fi
+    cp --remove-destination -- "$source_file" "$target"
+    printf "\e[1;33mCHANGED\e[m: Installed %s.\n" "$name"
+done
+
+export ZSH_CONFIG="${ZSH_CONFIG:-$HOME/.zsh-config}"
+if [[ ! -r "$ZSH_CONFIG/znap/znap.zsh" ]]; then
+    mkdir -p -- "$ZSH_CONFIG"
+    git clone --depth 1 -- https://github.com/marlonrichert/zsh-snap.git "$ZSH_CONFIG/znap"
+    printf "\e[1;33mCHANGED\e[m: Installed Znap.\n"
 else
-    printf "\e[1;32mOK\e[m: Oh My Zsh \e[1;32mis already installed.\n"
+    printf "\e[1;32mOK\e[m: Znap is already installed.\n"
 fi
-if grep -q "DISABLE_UPDATE_PROMPT=true" "$HOME/.zshrc"; then
-    printf "\e[1;32mOK\e[m: Automatic omz update \e[1;32mis already disabled.\n"
-else
-    echo "export DISABLE_UPDATE_PROMPT=true" >> "$HOME/.zshrc"
-    printf "\e[1;33mCHANGED\e[m: Disabled automatic omz update at startup...\n"
-fi
-ZSHRC_BACKUP="$HOME/.zshrc-`date +%Y%m%d%H%M%S`"
-cp "$HOME/.zshrc" "$ZSHRC_BACKUP"
-printf "\e[1;33mCHANGED\e[m: Backed up .zshrc to $ZSHRC_BACKUP\n"

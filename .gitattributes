@@ -1,5 +1,5 @@
-linux/**     text eol=lf
-dotfiles/**  text eol=lf
-
 # everything else: leave to Git defaults
 * -text
+
+linux/**     text eol=lf
+dotfiles/**  text eol=lf

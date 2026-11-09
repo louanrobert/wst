@@ -4,7 +4,7 @@
 
 # --- CONFIG ---
 TOOL="$1"
-ZSH="$HOME/.oh-my-zsh"
+ZSH="${XDG_DATA_HOME:-$HOME/.local/share}/zsh"
 ARKADE_BIN="$HOME/.arkade/bin"
 
 # --- FIX PATH ---
@@ -41,8 +41,8 @@ fi
 COMPLETION_OUTPUT=$("$TOOL" completion zsh 2>/dev/null || true)
 
 if [ -n "$COMPLETION_OUTPUT" ]; then
-    mkdir -p "$ZSH/completions"
-    COMPLETION_FILE="$ZSH/completions/_$TOOL"
+    mkdir -p "$ZSH/site-functions"
+    COMPLETION_FILE="$ZSH/site-functions/_$TOOL"
 
     if [[ -s "$COMPLETION_FILE" ]]; then
         printf "\e[1;32mOK\e[m: %s completion already exists.\n" "$TOOL"
@@ -53,4 +53,3 @@ if [ -n "$COMPLETION_OUTPUT" ]; then
     else
         printf "\e[1;33mWARNING\e[m: %s does not support zsh completions or command failed.\n" "$TOOL"
 fi
-

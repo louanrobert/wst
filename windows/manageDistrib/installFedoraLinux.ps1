@@ -71,10 +71,14 @@ if (-not (Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -
 Copy-Item -Path (Join-Path $workspaceRoot 'linux\justfile') -Destination $destPath -Force
 Copy-Item -Path (Join-Path $workspaceRoot 'linux\bootstrap.sh') -Destination $destPath -Force
 Copy-Item -Path (Join-Path $workspaceRoot 'linux\bootstrap') -Destination (Join-Path $destPath 'bootstrap') -Recurse -Force
+$stagedDotfiles = Join-Path (Split-Path -Parent $destPath) 'dotfiles'
+New-Item -ItemType Directory -Path $stagedDotfiles -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $workspaceRoot 'dotfiles') -Force |
+    Copy-Item -Destination $stagedDotfiles -Recurse -Force
 
 # Set ownership and mark scripts executable (use explicit chmod +x and retry if necessary)
 Write-Host "Setting ownership and permissions inside the instance..."
-$chownCmd = "chown -R ${LinuxUser}:${LinuxUser} /home/${LinuxUser}/workstation"
+$chownCmd = "chown -R ${LinuxUser}:${LinuxUser} /home/${LinuxUser}/workstation /home/${LinuxUser}/dotfiles"
 $chmodCmd = "chmod -R u+rwX /home/${LinuxUser}/workstation && find /home/${LinuxUser}/workstation -type f -name '*.sh' -exec chmod +x {} +"
 $cleanup = "find /home/${LinuxUser}/workstation -type f \( -name '*.sh' -o -name justfile \) -exec sed -i 's/\\r$//' {} +"
 
